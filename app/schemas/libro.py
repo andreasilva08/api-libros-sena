@@ -46,6 +46,9 @@ class LibroUpdate(BaseModel):
 class LibroResponse(LibroBase):
     id: int
     disponibles: int
+    portada_url: Optional[str] = None
+    portada_public_id: Optional[str] = None
+    portada_thumbnail_url: Optional[str] = None
     autor: AutorResponse
     categorias: List[CategoriaResponse] = []
 

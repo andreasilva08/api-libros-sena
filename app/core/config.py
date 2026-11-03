@@ -13,6 +13,11 @@ class Settings(BaseSettings):
     refresh_token_expire_days: int = 7
     login_max_failed_attempts: int = 5
     login_lock_minutes: int = 15
+    cloud_name: str | None = Field(default=None, validation_alias="CLOUD_NAME")
+    cloud_api_key: str | None = Field(default=None, validation_alias="API_KEY")
+    cloud_api_secret: str | None = Field(
+        default=None, validation_alias="API_SECRET"
+    )
     cors_origins: list[str] = []
     environment: Literal["dev", "test", "prod"] = "dev"
 
