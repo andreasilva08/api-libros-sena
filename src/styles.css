@@ -108,8 +108,9 @@ a { color: inherit; text-decoration: none; }
 .note-icon { color: #6d28d9; }
 .sidebar-book-note p { max-width: 150px; margin: 8px 0 10px; font-family: var(--font-display); font-size: 11px; font-weight: 500; line-height: 1.5; }
 .note-caption { color: rgb(23 37 84 / 55%); font-size: 8px; font-weight: 700; letter-spacing: 1px; }
-.sidebar-signout { display: flex; align-items: center; gap: 10px; padding: 10px 11px; color: rgb(23 37 84 / 66%); font-size: 11px; }
+.sidebar-signout { display: flex; width: 100%; align-items: center; gap: 10px; padding: 10px 11px; border: 0; color: rgb(23 37 84 / 66%); background: transparent; font: inherit; font-size: 11px; text-align: left; cursor: pointer; }
 .sidebar-signout:hover { color: #6d28d9; }
+.sidebar-signout:disabled { opacity: .65; cursor: wait; }
 .dashboard-main { width: calc(100% - 248px); min-height: 100vh; margin-left: 248px; }
 .topbar { position: sticky; z-index: 3; top: 0; display: flex; height: 68px; align-items: center; justify-content: space-between; padding: 0 38px; border-bottom: 1px solid rgb(23 37 84 / 8%); background: rgb(255 255 255 / 96%); backdrop-filter: blur(12px); }
 .breadcrumb { display: flex; align-items: center; gap: 8px; color: rgb(23 37 84 / 49%); font-size: 11px; }

@@ -16,17 +16,20 @@
       </header>
       <h2 :id="`${dialogId}-title`">{{ title }}</h2>
       <p :id="`${dialogId}-description`" class="confirm-description">{{ description }}</p>
-      <div class="dialog-preview-note"><Info :size="16" /><p>La confirmación solo continúa si la vista está conectada a una operación disponible.</p></div>
+      <div class="dialog-preview-note"><Info :size="16" /><p>Esta operación se aplicará al registro seleccionado.</p></div>
       <footer class="dialog-actions">
-        <button class="button button-secondary" type="button" @click="$emit('cancel')">{{ cancelLabel }}</button>
-        <button class="button button-primary" type="button" :disabled="!enabled" @click="$emit('confirm')">{{ confirmLabel }}</button>
+        <button class="button button-secondary" type="button" :disabled="loading" @click="$emit('cancel')">{{ cancelLabel }}</button>
+        <button class="button button-primary" type="button" :disabled="!enabled || loading" @click="$emit('confirm')">
+          <LoaderCircle v-if="loading" class="loading-icon" :size="15" />
+          {{ loading ? 'Procesando…' : confirmLabel }}
+        </button>
       </footer>
     </section>
   </div>
 </template>
 
 <script setup>
-import { Info, TriangleAlert, X } from '@lucide/vue'
+import { Info, LoaderCircle, TriangleAlert, X } from '@lucide/vue'
 
 defineProps({
   open: { type: Boolean, default: false },
@@ -35,7 +38,8 @@ defineProps({
   description: { type: String, required: true },
   confirmLabel: { type: String, default: 'Confirmar' },
   cancelLabel: { type: String, default: 'Cancelar' },
-  enabled: { type: Boolean, default: false },
+  enabled: { type: Boolean, default: true },
+  loading: { type: Boolean, default: false },
 })
 
 defineEmits(['confirm', 'cancel'])

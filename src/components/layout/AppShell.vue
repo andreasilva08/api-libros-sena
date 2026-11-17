@@ -1,19 +1,16 @@
 <template>
   <main class="dashboard-shell">
     <aside class="sidebar" :class="{ 'sidebar-open': menuOpen }">
-      <RouterLink class="brand sidebar-brand" to="/preview" aria-label="Biblioteca Segura, resumen">
+      <RouterLink class="brand sidebar-brand" to="/dashboard" aria-label="Biblioteca Segura, resumen">
         <span class="brand-mark"><BookOpenCheck :size="22" :stroke-width="1.8" /></span>
         <span class="brand-name">biblioteca<span>segura</span></span>
       </RouterLink>
 
       <div class="sidebar-label">ESPACIO DE TRABAJO</div>
       <nav class="side-nav" aria-label="Navegación principal">
-        <template v-for="item in navItems" :key="item.route">
-        <button v-if="item.disabled" class="nav-item nav-item-disabled" type="button" disabled>
-          <component :is="item.icon" :size="18" /><span>{{ item.label }}</span>
-        </button>
         <RouterLink
-          v-else
+          v-for="item in visibleNavItems"
+          :key="item.route"
           :to="item.to"
           class="nav-item"
           :class="{ 'nav-item-active': route.name === item.route }"
@@ -23,7 +20,6 @@
           <span>{{ item.label }}</span>
           <span v-if="route.name === item.route" class="nav-active-mark"></span>
         </RouterLink>
-        </template>
       </nav>
 
       <div class="sidebar-bottom">
@@ -32,7 +28,10 @@
           <p>Un buen libro siempre encuentra su lector.</p>
           <span class="note-caption">BIBLIOTECA SEGURA</span>
         </div>
-        <RouterLink to="/" class="sidebar-signout"><LogIn :size="16" /> Volver al acceso</RouterLink>
+        <button class="sidebar-signout" type="button" :disabled="signingOut" @click="signOut">
+          <LoaderCircle v-if="signingOut" class="loading-icon" :size="16" />
+          <LogOut v-else :size="16" /> {{ signingOut ? 'Cerrando sesión…' : 'Cerrar sesión' }}
+        </button>
       </div>
     </aside>
 
@@ -48,23 +47,18 @@
         ><Menu v-if="!menuOpen" :size="20" /><X v-else :size="20" /></button>
         <div class="breadcrumb"><span>Biblioteca</span><ChevronRight :size="14" /><strong>{{ pageTitle }}</strong></div>
         <div class="topbar-right">
-          <span class="preview-pill"><span></span> Modo vista previa</span>
+          <span class="preview-pill"><span></span> Sesión activa</span>
           <div class="topbar-divider"></div>
           <div class="profile-placeholder">
             <span class="avatar"><UserRound :size="17" /></span>
-            <span class="profile-copy"><strong>Sin sesión</strong><small>Propuesta visual</small></span>
+            <span class="profile-copy"><strong>{{ authStore.user?.nombre || authStore.user?.email }}</strong><small>{{ roleLabel }}</small></span>
           </div>
         </div>
       </header>
 
       <div class="dashboard-content">
-        <div class="preview-banner">
-          <span class="banner-icon"><Eye :size="17" /></span>
-          <div><strong>Estás viendo una propuesta de diseño</strong><p>Sin sesión activa y sin datos ficticios. El contenido se conectará a la API después.</p></div>
-          <RouterLink to="/" class="banner-link">Volver al acceso <ArrowUpRight :size="14" /></RouterLink>
-        </div>
         <slot />
-        <footer class="dashboard-footer"><span>Biblioteca Segura</span><span>Propuesta visual · Datos reales al conectar la API</span></footer>
+        <footer class="dashboard-footer"><span>Biblioteca Segura</span><span>Información sincronizada con la API</span></footer>
       </div>
     </section>
   </main>
@@ -72,18 +66,18 @@
 
 <script setup>
 import { computed, ref } from 'vue'
-import { RouterLink, useRoute } from 'vue-router'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
+import { authStore } from '../../stores/auth'
 import {
   ArrowLeftRight,
-  ArrowUpRight,
   BookOpen,
   BookOpenCheck,
   ChartNoAxesColumn,
   ChevronRight,
-  Eye,
   Feather,
   LayoutDashboard,
-  LogIn,
+  LoaderCircle,
+  LogOut,
   Menu,
   Sparkles,
   Tags,
@@ -94,16 +88,39 @@ import {
 } from '@lucide/vue'
 
 const route = useRoute()
+const router = useRouter()
 const menuOpen = ref(false)
+const signingOut = ref(false)
 const navItems = [
-  { label: 'Resumen', route: 'dashboard-preview', to: '/preview', icon: LayoutDashboard },
-  { label: 'Libros', route: 'books-preview', to: '/preview/libros', icon: BookOpen },
-  { label: 'Autores', route: 'authors-preview', to: '/preview/autores', icon: Feather },
-  { label: 'Categorías', route: 'categories-disabled', icon: Tags, disabled: true },
-  { label: 'Socios', route: 'members-preview', to: '/preview/socios', icon: UsersRound },
-  { label: 'Préstamos', route: 'loans-preview', to: '/preview/prestamos', icon: ArrowLeftRight },
-  { label: 'Usuarios', route: 'users-preview', to: '/preview/usuarios', icon: UserRoundCog },
-  { label: 'Reportes', route: 'reports-preview', to: '/preview/reportes', icon: ChartNoAxesColumn },
+  { label: 'Resumen', route: 'dashboard', to: '/dashboard', icon: LayoutDashboard },
+  { label: 'Libros', route: 'books', to: '/libros', icon: BookOpen },
+  { label: 'Autores', route: 'authors', to: '/autores', icon: Feather },
+  { label: 'Categorías', route: 'categories', to: '/categorias', icon: Tags },
+  { label: 'Socios', route: 'members', to: '/socios', icon: UsersRound },
+  { label: 'Préstamos', route: 'loans', to: '/prestamos', icon: ArrowLeftRight },
+  { label: 'Usuarios', route: 'users', to: '/usuarios', icon: UserRoundCog, roles: ['admin'] },
+  { label: 'Reportes', route: 'reports', to: '/reportes', icon: ChartNoAxesColumn, roles: ['admin', 'bibliotecario'] },
 ]
 const pageTitle = computed(() => route.meta.title || 'Resumen')
+const visibleNavItems = computed(() => navItems.filter(
+  (item) => !item.roles || item.roles.includes(authStore.user?.rol),
+))
+const roleLabel = computed(() => ({
+  admin: 'Administración',
+  bibliotecario: 'Bibliotecario',
+  socio: 'Socio',
+}[authStore.user?.rol] || 'Sesión'))
+
+async function signOut() {
+  if (signingOut.value) return
+  signingOut.value = true
+  try {
+    await authStore.logout()
+    await router.replace({ name: 'login' })
+  } catch {
+    await router.replace({ name: 'login', query: { logout: 'pending' } })
+  } finally {
+    signingOut.value = false
+  }
+}
 </script>

@@ -44,7 +44,7 @@
         <h2>Qué bueno tenerte<br />de vuelta.</h2>
         <p class="login-intro">Ingresa con tu cuenta para continuar.</p>
 
-        <form class="login-form" @submit.prevent="submitPreview">
+        <form class="login-form" @submit.prevent="submitLogin">
           <label for="email">Correo electrónico</label>
           <div class="input-wrap">
             <Mail :size="17" aria-hidden="true" />
@@ -70,7 +70,6 @@
               autocomplete="current-password"
               placeholder="Ingresa tu contraseña"
               required
-              minlength="8"
             />
             <button
               class="input-action"
@@ -83,20 +82,12 @@
             </button>
           </div>
 
-          <p v-if="notice" class="form-notice" role="status">{{ notice }}</p>
-          <button class="button button-primary login-submit" type="submit">
-            Iniciar sesión <ArrowRight :size="17" />
+          <p v-if="notice" class="form-notice" role="alert">{{ notice }}</p>
+          <button class="button button-primary login-submit" type="submit" :disabled="loading">
+            <LoaderCircle v-if="loading" class="loading-icon" :size="17" />
+            <template v-else>Iniciar sesión <ArrowRight :size="17" /></template>
           </button>
         </form>
-
-        <div class="preview-callout">
-          <Info :size="17" />
-          <p>Vista de propuesta. La autenticación se conectará a la API en la siguiente fase.</p>
-        </div>
-
-        <RouterLink class="preview-link" to="/preview">
-          Explorar propuesta del panel <ArrowUpRight :size="15" />
-        </RouterLink>
       </div>
 
       <footer class="login-footer">
@@ -109,27 +100,55 @@
 </template>
 
 <script setup>
-import { ref } from 'vue'
-import { RouterLink } from 'vue-router'
+import { onMounted, ref } from 'vue'
+import { RouterLink, useRoute, useRouter } from 'vue-router'
 import {
   ArrowRight,
-  ArrowUpRight,
   BookOpenCheck,
   Eye,
   EyeOff,
-  Info,
   LibraryBig,
+  LoaderCircle,
   LockKeyhole,
   Mail,
   ShieldCheck,
 } from '@lucide/vue'
+import { authStore } from '../stores/auth'
+import { getApiErrorMessage } from '../services/api'
 
 const email = ref('')
 const password = ref('')
 const showPassword = ref(false)
 const notice = ref('')
+const loading = ref(false)
+const route = useRoute()
+const router = useRouter()
 
-function submitPreview() {
-  notice.value = 'La conexión de inicio de sesión con la API se habilitará en la fase de integración.'
+onMounted(() => {
+  if (route.query.expired) notice.value = 'Tu sesión venció. Inicia sesión nuevamente.'
+  else if (route.query.forbidden) notice.value = 'Tu cuenta no tiene acceso a esa sección.'
+  else if (route.query.logout === 'pending') {
+    notice.value = 'Se cerró la sesión local, pero no se pudo confirmar su revocación en el servidor.'
+  }
+})
+
+async function submitLogin() {
+  if (loading.value) return
+  loading.value = true
+  notice.value = ''
+  try {
+    await authStore.login(email.value, password.value)
+    const redirect = route.query.redirect
+    const safeRedirect = typeof redirect === 'string'
+      && redirect.startsWith('/')
+      && !redirect.startsWith('//')
+      ? redirect
+      : { name: 'dashboard' }
+    await router.replace(safeRedirect)
+  } catch (error) {
+    notice.value = getApiErrorMessage(error, 'No fue posible iniciar sesión.')
+  } finally {
+    loading.value = false
+  }
 }
 </script>
