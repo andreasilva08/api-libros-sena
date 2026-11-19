@@ -24,6 +24,7 @@ from app.routes.reportes import router as reportes_router
 from app.routes import auth
 from app.routes.solicitudes import router as solicitudes_router
 from app.routes.usuarios import router as usuarios_router
+from app.routes.resenas import router as resenas_router
 
 # ⚠️ NOTA: Ya no va 'Base.metadata.create_all' aquí. 
 # Las tablas se gestionan y aplican exclusivamente con Alembic.
@@ -96,6 +97,7 @@ app.include_router(health_router, prefix="/api/v1")
 app.include_router(autores_router, prefix="/api/v1")
 app.include_router(categorias_router, prefix="/api/v1")
 app.include_router(libros_router, prefix="/api/v1")
+app.include_router(resenas_router, prefix="/api/v1")
 app.include_router(socios_router, prefix="/api/v1")
 app.include_router(prestamos_router, prefix="/api/v1")
 app.include_router(reportes_router, prefix="/api/v1")

@@ -3,6 +3,7 @@ from app.models.categoria import Categoria
 from app.models.libro import Libro
 from app.models.prestamo import Prestamo
 from app.models.refresh_token import RefreshToken
+from app.models.resena import Resena
 from app.models.solicitud_registro import SolicitudRegistro
 from app.models.socio import Socio
 from app.models.usuario import Usuario
@@ -13,6 +14,7 @@ __all__ = [
     "Libro",
     "Prestamo",
     "RefreshToken",
+    "Resena",
     "SolicitudRegistro",
     "Socio",
     "Usuario",

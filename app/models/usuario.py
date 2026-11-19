@@ -62,6 +62,9 @@ class Usuario(Base):
     prestamos_registrados = relationship(
         "Prestamo", back_populates="registrado_por"
     )
+    resenas = relationship(
+        "Resena", back_populates="usuario", cascade="all, delete-orphan"
+    )
 
     @property
     def is_admin(self) -> bool:

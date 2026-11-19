@@ -23,3 +23,6 @@ class Libro(Base):
         back_populates="libros"
     )
     prestamos = relationship("Prestamo", back_populates="libro")
+    resenas = relationship(
+        "Resena", back_populates="libro", cascade="all, delete-orphan"
+    )

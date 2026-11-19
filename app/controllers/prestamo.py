@@ -94,9 +94,12 @@ def create_prestamo(
         raise NoEncontrado("El socio especificado no existe")
 
     # R2: El libro existe
-    libro = db.query(Libro).filter(
-        Libro.id == p_in.libro_id
-    ).first()
+    libro = (
+        db.query(Libro)
+        .filter(Libro.id == p_in.libro_id)
+        .with_for_update()
+        .first()
+    )
 
     if not libro:
         raise NoEncontrado("El libro especificado no existe")

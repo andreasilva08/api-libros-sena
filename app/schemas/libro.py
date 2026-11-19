@@ -46,6 +46,8 @@ class LibroUpdate(BaseModel):
 class LibroResponse(LibroBase):
     id: int
     disponibles: int
+    calificacion_promedio: float = 0
+    resenas_total: int = 0
     portada_url: Optional[str] = None
     portada_public_id: Optional[str] = None
     portada_thumbnail_url: Optional[str] = None

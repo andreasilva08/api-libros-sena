@@ -13,6 +13,10 @@ export const prestamosService = {
     const { data } = await api.post('/prestamos/', payload)
     return data
   },
+  async request(payload) {
+    const { data } = await api.post('/prestamos/solicitar', payload)
+    return data
+  },
   async returnLoan(id, payload) {
     const { data } = await api.post(`/prestamos/${id}/devolucion`, payload)
     return data

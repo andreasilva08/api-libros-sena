@@ -1,9 +1,11 @@
 import { api } from './api'
+import { normalizeAuthor, normalizePage } from './catalog-normalizers'
 
 export const autoresService = {
-  async list(params) {
-    const { data } = await api.get('/autores/', { params })
-    return data
+  async list(params = {}) {
+    const requestParams = { skip: 0, limit: 100, ...params }
+    const { data } = await api.get('/autores/', { params: requestParams })
+    return normalizePage(data, requestParams, normalizeAuthor, 'autores')
   },
   async get(id) {
     const { data } = await api.get(`/autores/${id}`)

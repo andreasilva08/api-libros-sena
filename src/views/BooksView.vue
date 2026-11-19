@@ -29,12 +29,18 @@
       </select>
     </ModuleToolbar>
 
-    <p v-if="notice" class="form-notice module-feedback" role="status">{{ notice }}</p>
+    <p v-if="notice" class="form-notice module-feedback" :class="{ 'module-feedback-error': noticeIsError }" role="status">
+      {{ notice }}
+      <RouterLink v-if="requestedLoanId" class="book-loan-link" :to="{ name: 'loans' }">Ver mis préstamos</RouterLink>
+    </p>
     <p v-if="optionsError" class="form-notice module-feedback" role="alert">{{ optionsError }}</p>
     <section class="catalog-section" aria-label="Catálogo de libros">
       <div class="catalog-section-heading">
         <div><h2>Catálogo visual</h2><p>Portadas, autoría y ejemplares disponibles.</p></div>
-        <span class="catalog-view-label"><LayoutGrid :size="15" /> {{ page.total }} títulos</span>
+        <span class="catalog-view-label">
+          <LayoutGrid :size="15" />
+          {{ loading ? 'Cargando…' : loadError ? 'Catálogo no disponible' : `${page.total} títulos` }}
+        </span>
       </div>
       <div v-if="loading" class="table-loading" role="status" aria-live="polite">
         <LoaderCircle class="loading-icon" :size="20" /><span>Cargando catálogo…</span>
@@ -75,6 +81,16 @@
               <span><span class="availability-dot"></span>Disponibilidad</span>
               <strong>{{ book.disponibles }} disponibles / {{ book.ejemplares }} ejemplares</strong>
             </div>
+            <div class="book-rating-summary">
+              <span class="book-rating-stars" :aria-label="`${book.calificacion_promedio} de 5 estrellas`">
+                {{ starDisplay(book.calificacion_promedio) }}
+              </span>
+              <strong>{{ ratingText(book.calificacion_promedio) }}</strong>
+              <span>({{ book.resenas_total }} opiniones)</span>
+              <button class="book-review-toggle" type="button" @click="toggleReviews(book)">
+                {{ reviewExpanded.has(book.id) ? 'Ocultar opiniones' : 'Ver opiniones' }}
+              </button>
+            </div>
             <div class="book-template-footer">
               <span>{{ book.disponibles > 0 ? 'Disponible para préstamo' : 'Sin ejemplares disponibles' }}</span>
               <div v-if="authStore.isStaff" class="row-actions">
@@ -83,6 +99,85 @@
                 <button class="row-action" type="button" :aria-label="`Eliminar ${book.titulo}`" title="Eliminar libro" @click="pendingDelete = book"><Trash2 :size="15" /></button>
               </div>
             </div>
+            <button
+              v-if="authStore.user?.rol === 'socio'"
+              class="button button-primary book-request-button"
+              type="button"
+              :disabled="book.disponibles <= 0"
+              @click="pendingLoan = book"
+            >
+              {{ book.disponibles > 0 ? 'Pedir préstamo' : 'Sin ejemplares disponibles' }}
+            </button>
+            <section v-if="reviewExpanded.has(book.id)" class="book-reviews" :aria-label="`Opiniones sobre ${book.titulo}`">
+              <div v-if="reviewLoading.has(book.id)" class="book-review-feedback" role="status">Cargando opiniones…</div>
+              <div v-else-if="reviewErrors[book.id]" class="book-review-feedback" role="alert">
+                {{ reviewErrors[book.id] }}
+                <button class="book-review-toggle" type="button" @click="loadReviews(book)">Reintentar</button>
+              </div>
+              <template v-else-if="reviewData[book.id]">
+                <p
+                  v-if="authStore.user?.rol === 'socio' && !reviewData[book.id].puede_opinar"
+                  class="book-review-feedback"
+                  role="note"
+                >
+                  Podrás calificar y opinar sobre este libro cuando hayas devuelto al menos un ejemplar.
+                </p>
+                <form
+                  v-else-if="authStore.user?.rol === 'socio' && reviewData[book.id].puede_opinar"
+                  class="book-review-form"
+                  @submit.prevent="saveReview(book)"
+                >
+                  <strong>{{ reviewData[book.id].mi_resena ? 'Actualiza tu opinión' : 'Califica este libro' }}</strong>
+                  <div class="book-review-stars" role="group" aria-label="Tu calificación">
+                    <button
+                      v-for="rating in 5"
+                      :key="rating"
+                      class="rating-star-button"
+                      :class="{ 'rating-star-selected': rating <= reviewDrafts[book.id].calificacion }"
+                      type="button"
+                      :aria-label="`${rating} estrellas`"
+                      :aria-pressed="reviewDrafts[book.id].calificacion === rating"
+                      @click="reviewDrafts[book.id].calificacion = rating"
+                    >★</button>
+                  </div>
+                  <label class="sr-only" :for="`review-comment-${book.id}`">Tu opinión sobre {{ book.titulo }}</label>
+                  <textarea
+                    :id="`review-comment-${book.id}`"
+                    v-model="reviewDrafts[book.id].comentario"
+                    maxlength="2000"
+                    rows="3"
+                    placeholder="Comparte tu opinión (opcional)"
+                  ></textarea>
+                  <button
+                    class="button button-secondary"
+                    type="submit"
+                    :disabled="reviewSavingBookId === book.id || reviewDrafts[book.id].calificacion < 1"
+                  >
+                    {{ reviewSavingBookId === book.id ? 'Guardando…' : 'Publicar opinión' }}
+                  </button>
+                </form>
+                <p v-if="reviewNotices[book.id]" class="book-review-feedback" role="status">{{ reviewNotices[book.id] }}</p>
+                <ul v-if="reviewData[book.id].items.length" class="book-review-list">
+                  <li v-for="review in reviewData[book.id].items" :key="review.id" class="book-review-item">
+                    <div class="book-review-heading">
+                      <strong>{{ review.autor_nombre }} <span v-if="review.es_mia" class="book-review-own">(Tu opinión)</span></strong>
+                      <span class="book-rating-stars" :aria-label="`${review.calificacion} de 5 estrellas`">{{ starDisplay(review.calificacion) }}</span>
+                    </div>
+                    <p v-if="review.comentario">{{ review.comentario }}</p>
+                    <div class="book-review-meta">
+                      <time :datetime="review.actualizado_en">{{ formatReviewDate(review.actualizado_en) }}</time>
+                      <button
+                        v-if="review.es_mia || authStore.isAdmin"
+                        class="book-review-delete"
+                        type="button"
+                        @click="pendingReview = { book, review }"
+                      >Eliminar</button>
+                    </div>
+                  </li>
+                </ul>
+                <p v-else class="book-review-feedback">Aún no hay opiniones para este libro.</p>
+              </template>
+            </section>
           </div>
         </article>
       </div>
@@ -116,6 +211,24 @@
       @cancel="pendingDelete = null"
       @confirm="removeBook"
     />
+    <ConfirmActionDialog
+      :open="Boolean(pendingLoan)"
+      dialog-id="request-book-loan"
+      title="Pedir préstamo"
+      :description="`¿Deseas pedir prestado “${pendingLoan?.titulo || 'este libro'}”? La disponibilidad se volverá a validar al confirmar.`"
+      :loading="requestingBookId === pendingLoan?.id"
+      @cancel="pendingLoan = null"
+      @confirm="requestLoan"
+    />
+    <ConfirmActionDialog
+      :open="Boolean(pendingReview)"
+      dialog-id="delete-book-review"
+      title="Eliminar opinión"
+      description="¿Deseas eliminar esta opinión? Esta acción no se puede deshacer."
+      :loading="deletingReview"
+      @cancel="pendingReview = null"
+      @confirm="removeReview"
+    />
   </AppShell>
 </template>
 
@@ -137,6 +250,8 @@ import ModuleHeading from '../components/common/ModuleHeading.vue'
 import ModuleToolbar from '../components/common/ModuleToolbar.vue'
 import PreviewFormDialog from '../components/common/PreviewFormDialog.vue'
 import { getApiErrorMessage } from '../services/api'
+import { prestamosService } from '../services/prestamos.service'
+import { resenasService } from '../services/resenas.service'
 import { autoresService } from '../services/autores.service'
 import { categoriasService } from '../services/categorias.service'
 import { librosService } from '../services/libros.service'
@@ -155,6 +270,7 @@ const authorFilter = ref('')
 const categoryFilter = ref('')
 const order = ref('')
 const notice = ref('')
+const noticeIsError = ref(false)
 const dialogOpen = ref(false)
 const dialogMode = ref('create')
 const selectedBook = ref(null)
@@ -164,7 +280,19 @@ const saving = ref(false)
 const pendingDelete = ref(null)
 const deleting = ref(false)
 const failedCovers = ref(new Set())
+const reviewData = ref({})
+const reviewExpanded = ref(new Set())
+const reviewLoading = ref(new Set())
+const reviewErrors = ref({})
+const reviewNotices = ref({})
+const reviewDrafts = ref({})
+const reviewSavingBookId = ref(null)
+const pendingLoan = ref(null)
+const requestingBookId = ref(null)
+const pendingReview = ref(null)
+const deletingReview = ref(false)
 let searchTimer
+let loadSequence = 0
 
 const bookFields = computed(() => [
   { name: 'titulo', label: 'Título', required: true, minlength: 1, maxlength: 150, placeholder: 'Título del libro' },
@@ -202,6 +330,7 @@ watch([search, authorFilter, categoryFilter, order], () => {
 })
 
 async function load() {
+  const requestId = ++loadSequence
   loading.value = true
   loadError.value = ''
   try {
@@ -213,12 +342,16 @@ async function load() {
       ...(categoryFilter.value ? { categoria_id: Number(categoryFilter.value) } : {}),
       ...(order.value ? { orden: order.value } : {}),
     }
-    page.value = await librosService.list(params)
+    const result = await librosService.list(params)
+    if (requestId !== loadSequence) return
+    page.value = result
     failedCovers.value = new Set()
   } catch (error) {
-    loadError.value = getApiErrorMessage(error, 'No se pudo cargar el catálogo.')
+    if (requestId === loadSequence) {
+      loadError.value = getApiErrorMessage(error, 'No se pudo cargar el catálogo.')
+    }
   } finally {
-    loading.value = false
+    if (requestId === loadSequence) loading.value = false
   }
 }
 
@@ -229,6 +362,9 @@ async function loadOptions() {
       autoresService.list({ skip: 0, limit: 100 }),
       categoriasService.list({ skip: 0, limit: 100 }),
     ])
+    if (!Array.isArray(authorPage.items) || !Array.isArray(categoryPage.items)) {
+      throw new Error('La API devolvió datos inválidos para los filtros del catálogo.')
+    }
     authors.value = authorPage.items
     categories.value = categoryPage.items
   } catch (error) {
@@ -248,6 +384,127 @@ function coverUrl(book) {
 function markCoverFailed(id) {
   failedCovers.value = new Set([...failedCovers.value, id])
 }
+
+function starDisplay(value) {
+  const parsed = Number(value)
+  const rounded = Math.max(0, Math.min(5, Math.round(Number.isFinite(parsed) ? parsed : 0)))
+  return `${'★'.repeat(rounded)}${'☆'.repeat(5 - rounded)}`
+}
+
+function ratingText(value) {
+  const parsed = Number(value)
+  return (Number.isFinite(parsed) ? parsed : 0).toFixed(1)
+}
+
+function formatReviewDate(value) {
+  return new Intl.DateTimeFormat('es-CO', { dateStyle: 'medium' }).format(new Date(value))
+}
+
+async function toggleReviews(book) {
+  if (reviewExpanded.value.has(book.id)) {
+    reviewExpanded.value = new Set([...reviewExpanded.value].filter((id) => id !== book.id))
+    return
+  }
+  reviewExpanded.value = new Set([...reviewExpanded.value, book.id])
+  if (!reviewData.value[book.id]) await loadReviews(book)
+}
+
+async function loadReviews(book) {
+  reviewLoading.value = new Set([...reviewLoading.value, book.id])
+  reviewErrors.value = { ...reviewErrors.value, [book.id]: '' }
+  try {
+    const data = await resenasService.list(book.id)
+    applyReviewData(book, data)
+  } catch (error) {
+    reviewErrors.value = {
+      ...reviewErrors.value,
+      [book.id]: getApiErrorMessage(error, 'No se pudieron cargar las opiniones.'),
+    }
+  } finally {
+    reviewLoading.value = new Set([...reviewLoading.value].filter((id) => id !== book.id))
+  }
+}
+
+function applyReviewData(book, data) {
+  reviewData.value = { ...reviewData.value, [book.id]: data }
+  reviewDrafts.value = {
+    ...reviewDrafts.value,
+    [book.id]: {
+      calificacion: data.mi_resena?.calificacion || 0,
+      comentario: data.mi_resena?.comentario || '',
+    },
+  }
+  const currentBook = page.value.items.find((item) => item.id === book.id)
+  if (currentBook) {
+    currentBook.calificacion_promedio = data.promedio
+    currentBook.resenas_total = data.total
+  }
+}
+
+async function saveReview(book) {
+  if (reviewSavingBookId.value !== null) return
+  reviewSavingBookId.value = book.id
+  reviewNotices.value = { ...reviewNotices.value, [book.id]: '' }
+  try {
+    const data = await resenasService.save(book.id, {
+      calificacion: reviewDrafts.value[book.id].calificacion,
+      comentario: reviewDrafts.value[book.id].comentario.trim() || null,
+    }, Boolean(reviewData.value[book.id].mi_resena))
+    applyReviewData(book, data)
+    reviewNotices.value = { ...reviewNotices.value, [book.id]: 'Tu opinión se guardó correctamente.' }
+  } catch (error) {
+    reviewNotices.value = {
+      ...reviewNotices.value,
+      [book.id]: getApiErrorMessage(error, 'No se pudo guardar tu opinión.'),
+    }
+  } finally {
+    reviewSavingBookId.value = null
+  }
+}
+
+async function removeReview() {
+  if (!pendingReview.value || deletingReview.value) return
+  deletingReview.value = true
+  const { book, review } = pendingReview.value
+  try {
+    await resenasService.remove(book.id, review.id)
+    pendingReview.value = null
+    await loadReviews(book)
+    reviewNotices.value = { ...reviewNotices.value, [book.id]: 'La opinión se eliminó correctamente.' }
+  } catch (error) {
+    reviewNotices.value = {
+      ...reviewNotices.value,
+      [book.id]: getApiErrorMessage(error, 'No se pudo eliminar la opinión.'),
+    }
+  } finally {
+    deletingReview.value = false
+  }
+}
+
+async function requestLoan() {
+  if (!pendingLoan.value || requestingBookId.value !== null) return
+  const book = pendingLoan.value
+  requestingBookId.value = book.id
+  notice.value = ''
+  noticeIsError.value = false
+  requestedLoanId.value = null
+  try {
+    const loan = await prestamosService.request({ libro_id: book.id })
+    book.disponibles = Math.max(0, book.disponibles - 1)
+    pendingLoan.value = null
+    notice.value = `Préstamo ${loan.id} registrado correctamente.`
+    requestedLoanId.value = loan.id
+    await load()
+  } catch (error) {
+    notice.value = getApiErrorMessage(error, 'No se pudo registrar el préstamo.')
+    noticeIsError.value = true
+    pendingLoan.value = null
+  } finally {
+    requestingBookId.value = null
+  }
+}
+
+const requestedLoanId = ref(null)
 
 function openCreate() {
   selectedBook.value = null

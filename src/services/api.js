@@ -101,6 +101,8 @@ export function getApiErrorMessage(error, fallback = 'No se pudo completar la so
   if (error.response?.status === 401) return 'Tu sesión venció. Inicia sesión nuevamente.'
   if (error.response?.status === 403) return 'No tienes permisos para realizar esta acción.'
   if (error.response?.status >= 500) return 'El servidor no pudo completar la solicitud.'
-  if (!error.response) return 'No se pudo conectar con la API. Comprueba la conexión e inténtalo de nuevo.'
+  if (!error.response) {
+    return 'No se pudo conectar con la API. Comprueba la URL, la conexión y que el backend permita este origen (CORS).'
+  }
   return fallback
 }

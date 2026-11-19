@@ -12,46 +12,107 @@
       </template>
     </ModuleHeading>
 
-    <ModuleToolbar v-model="search" search-placeholder="Buscar en socios cargados">
-      <label v-if="authStore.isStaff" class="sr-only" for="member-status-filter">Filtrar por estado</label>
-      <select
-        v-if="authStore.isStaff"
-        id="member-status-filter"
-        v-model="activeFilter"
-        class="module-filter"
-        @change="applyFilters"
-      >
-        <option value="">Todos los estados</option>
-        <option value="true">Activo</option>
-        <option value="false">Inactivo</option>
-      </select>
-      <span class="filter-hint"><SlidersHorizontal :size="15" /> Estado de afiliación</span>
-    </ModuleToolbar>
-
     <p v-if="notice" class="form-notice module-feedback" role="status">{{ notice }}</p>
-    <section class="table-section" aria-label="Listado de socios">
-      <div class="table-section-heading">
-        <div><h2>{{ authStore.user?.rol === 'socio' ? 'Información de afiliación' : 'Comunidad lectora' }}</h2><p>Contacto, estado de afiliación y fecha de alta.</p></div>
-        <span class="record-count"><UsersRound :size="15" /> {{ page.total }} registros</span>
+    <template v-if="isMemberAccount">
+      <div v-if="loading" class="table-loading" role="status" aria-live="polite">Cargando tu perfil…</div>
+      <div v-else-if="loadError" class="table-empty" role="alert">
+        <strong>No se pudo cargar tu perfil</strong>
+        <p>{{ loadError }}</p>
+        <button class="button button-secondary table-retry" type="button" @click="load">Reintentar</button>
       </div>
-      <ModuleTable
-        aria-label="Socios"
-        :columns="columns"
-        :rows="filteredMembers"
-        :actions="actions"
-        :icon="UsersRound"
-        :loading="loading"
-        :error="loadError"
-        :total="page.total"
-        :skip="skip"
-        :limit="limit"
-        empty-title="La comunidad aparecerá aquí"
-        empty-description="No se encontraron socios con estos filtros."
-        @row-action="handleRowAction"
-        @page-change="changePage"
-        @retry="load"
-      />
-    </section>
+      <section v-else-if="profileMember" class="member-profile-card" aria-label="Mi perfil de socio">
+        <header class="member-profile-header">
+          <div class="member-profile-avatar" aria-hidden="true">{{ memberInitials(profileMember.nombre) }}</div>
+          <div class="member-profile-identity">
+            <span class="member-profile-eyebrow">PERFIL DE SOCIO</span>
+            <h2>{{ profileMember.nombre }}</h2>
+            <p>{{ profileMember.email }}</p>
+            <div class="member-profile-badges">
+              <span class="member-profile-role">Socio</span>
+              <span class="member-profile-status" :class="{ 'member-profile-status-inactive': !profileMember.activo }">
+                {{ profileMember.activo ? 'Cuenta activa · Membresía activa' : 'Cuenta activa · Membresía inactiva' }}
+              </span>
+            </div>
+          </div>
+          <button
+            class="button button-secondary member-profile-edit"
+            type="button"
+            @click="handleRowAction({ action: 'edit', row: profileMember })"
+          >
+            <PencilLine :size="16" /> Editar perfil
+          </button>
+        </header>
+
+        <div class="member-profile-details">
+          <section class="member-profile-block">
+            <h3>Contacto</h3>
+            <dl>
+              <div><dt>Correo electrónico</dt><dd>{{ profileMember.email }}</dd></div>
+              <div><dt>Teléfono</dt><dd>{{ profileMember.telefono || 'No registrado' }}</dd></div>
+            </dl>
+          </section>
+          <section class="member-profile-block">
+            <h3>Afiliación</h3>
+            <dl>
+              <div><dt>Identificador de socio</dt><dd>#{{ profileMember.id }}</dd></div>
+              <div><dt>Fecha de alta</dt><dd>{{ formatDate(profileMember.fecha_alta) }}</dd></div>
+            </dl>
+          </section>
+        </div>
+
+        <section class="member-activity" aria-label="Resumen de mi actividad">
+          <h3>Mi actividad</h3>
+          <div class="member-activity-grid">
+            <article><span>Préstamos activos</span><strong>{{ activity.activeLoans }}</strong></article>
+            <article><span>Préstamos realizados</span><strong>{{ activity.totalLoans }}</strong></article>
+            <article>
+              <span>Multas pendientes</span>
+              <strong>{{ formatCurrency(activity.pendingFines) }}</strong>
+              <small>{{ activity.pendingFines > 0 ? 'Saldo por pagar' : 'Sin multas pendientes' }}</small>
+            </article>
+          </div>
+        </section>
+      </section>
+    </template>
+    <template v-else>
+      <ModuleToolbar v-model="search" search-placeholder="Buscar en socios cargados">
+        <label class="sr-only" for="member-status-filter">Filtrar por estado</label>
+        <select
+          id="member-status-filter"
+          v-model="activeFilter"
+          class="module-filter"
+          @change="applyFilters"
+        >
+          <option value="">Todos los estados</option>
+          <option value="true">Activo</option>
+          <option value="false">Inactivo</option>
+        </select>
+        <span class="filter-hint"><SlidersHorizontal :size="15" /> Estado de afiliación</span>
+      </ModuleToolbar>
+      <section class="table-section" aria-label="Listado de socios">
+        <div class="table-section-heading">
+          <div><h2>Comunidad lectora</h2><p>Contacto, estado de afiliación y fecha de alta.</p></div>
+          <span class="record-count"><UsersRound :size="15" /> {{ page.total }} registros</span>
+        </div>
+        <ModuleTable
+          aria-label="Socios"
+          :columns="columns"
+          :rows="filteredMembers"
+          :actions="actions"
+          :icon="UsersRound"
+          :loading="loading"
+          :error="loadError"
+          :total="page.total"
+          :skip="skip"
+          :limit="limit"
+          empty-title="La comunidad aparecerá aquí"
+          empty-description="No se encontraron socios con estos filtros."
+          @row-action="handleRowAction"
+          @page-change="changePage"
+          @retry="load"
+        />
+      </section>
+    </template>
 
     <PreviewFormDialog
       :open="dialogOpen"
@@ -89,7 +150,7 @@ import PreviewFormDialog from '../components/common/PreviewFormDialog.vue'
 import { getApiErrorMessage } from '../services/api'
 import { sociosService } from '../services/socios.service'
 import { authStore } from '../stores/auth'
-import { formatDate } from '../utils/format'
+import { formatCurrency, formatDate } from '../utils/format'
 
 const limit = 10
 const skip = ref(0)
@@ -108,6 +169,8 @@ const saving = ref(false)
 const pendingDelete = ref(null)
 const deleting = ref(false)
 const isMemberAccount = computed(() => authStore.user?.rol === 'socio')
+const profileMember = computed(() => page.value.items[0] || null)
+const activity = ref({ activeLoans: 0, totalLoans: 0, pendingFines: 0 })
 
 const columns = [
   { key: 'nombre', label: 'Nombre' },
@@ -156,8 +219,18 @@ async function load() {
   loadError.value = ''
   try {
     if (isMemberAccount.value) {
-      const member = await sociosService.me()
+      const [member, activeLoans, allLoans, fines] = await Promise.all([
+        sociosService.me(),
+        sociosService.loansForMe({ estado: 'activo', skip: 0, limit: 1 }),
+        sociosService.loansForMe({ skip: 0, limit: 1 }),
+        sociosService.finesForMe({ skip: 0, limit: 1 }),
+      ])
       page.value = { items: [member], total: 1, skip: 0, limit: 1 }
+      activity.value = {
+        activeLoans: activeLoans.total,
+        totalLoans: allLoans.total,
+        pendingFines: fines.total_adeudado,
+      }
     } else {
       const params = { skip: skip.value, limit }
       if (activeFilter.value !== '') params.activo = activeFilter.value === 'true'
@@ -168,6 +241,15 @@ async function load() {
   } finally {
     loading.value = false
   }
+}
+
+function memberInitials(name) {
+  return (name || '')
+    .split(/\s+/)
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0].toLocaleUpperCase('es-CO'))
+    .join('')
 }
 
 function applyFilters() {

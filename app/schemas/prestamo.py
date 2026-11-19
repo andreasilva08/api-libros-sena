@@ -1,4 +1,4 @@
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field
 from typing import Optional
 from datetime import date
 from app.schemas.libro import LibroResponse
@@ -12,6 +12,14 @@ class PrestamoBase(BaseModel):
 
 class PrestamoCreate(PrestamoBase):
     pass
+
+
+class PrestamoSocioCreate(BaseModel):
+    model_config = ConfigDict(extra="forbid")
+
+    libro_id: int
+    dias: Optional[int] = Field(14, ge=1, le=30)
+
 
 class DevolucionCreate(BaseModel):
     fecha_devolucion: Optional[date] = None

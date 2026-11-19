@@ -1,13 +1,22 @@
 import { api } from './api'
+import { normalizeBook, normalizePage } from './catalog-normalizers'
 
 export const librosService = {
-  async list(params) {
-    const { data } = await api.get('/libros/', { params })
-    return data
+  async list(params = {}) {
+    const requestParams = { skip: 0, limit: 8, ...params }
+    const { data } = await api.get('/libros/', {
+      params: requestParams,
+    })
+    return normalizePage(
+      data,
+      requestParams,
+      normalizeBook,
+      'el catálogo de libros',
+    )
   },
   async get(id) {
     const { data } = await api.get(`/libros/${id}`)
-    return data
+    return normalizeBook(data)
   },
   async create(payload) {
     const { data } = await api.post('/libros/', payload)

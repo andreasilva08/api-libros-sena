@@ -4,13 +4,20 @@ from fastapi import APIRouter, Depends, status
 from sqlalchemy.orm import Session
 
 from app.controllers import prestamo as prestamo_controller
-from app.core.dependencies import CurrentUser, Staff, get_db, paginacion
+from app.core.dependencies import (
+    CurrentUser,
+    SocioActual,
+    Staff,
+    get_db,
+    paginacion,
+)
 from app.core.exceptions import NoEncontrado
 from app.schemas.paginacion import Pagina
 from app.schemas.prestamo import (
     DevolucionCreate,
     PrestamoCreate,
     PrestamoResponse,
+    PrestamoSocioCreate,
 )
 
 
@@ -78,6 +85,28 @@ def crear_prestamo(
         )
     return prestamo_controller.create_prestamo(
         db, prestamo, registrado_por_id=usuario.id
+    )
+
+
+@router.post(
+    "/solicitar",
+    response_model=PrestamoResponse,
+    status_code=status.HTTP_201_CREATED,
+)
+def solicitar_prestamo(
+    prestamo: PrestamoSocioCreate,
+    usuario: SocioActual,
+    db: Annotated[Session, Depends(get_db)],
+):
+    if usuario.socio_id is None:
+        raise NoEncontrado("Perfil de socio no encontrado")
+    solicitud = PrestamoCreate(
+        libro_id=prestamo.libro_id,
+        socio_id=usuario.socio_id,
+        dias=prestamo.dias,
+    )
+    return prestamo_controller.create_prestamo(
+        db, solicitud, registrado_por_id=usuario.id
     )
 
 

@@ -1,12 +1,13 @@
 from sqlalchemy.orm import Session, selectinload
-from sqlalchemy import or_, desc
-from typing import Optional, List
+from sqlalchemy import desc, func
+from typing import Optional
 from enum import Enum
 
 from app.models.libro import Libro
 from app.models.autor import Autor
 from app.models.categoria import Categoria
 from app.models.prestamo import Prestamo
+from app.models.resena import Resena
 from app.schemas.libro import LibroCreate, LibroUpdate
 from app.core.exceptions import NoEncontrado, Conflicto, ReglaNegocio
 
@@ -26,6 +27,12 @@ def calcular_disponibles(db: Session, libro: Libro) -> int:
 def enriq_libro(db: Session, libro: Libro) -> dict:
     # Transforma el modelo a diccionario o añade el atributo calculable para el schema Response
     setattr(libro, "disponibles", calcular_disponibles(db, libro))
+    promedio, total = db.query(
+        func.avg(Resena.calificacion),
+        func.count(Resena.id),
+    ).filter(Resena.libro_id == libro.id).one()
+    setattr(libro, "calificacion_promedio", round(float(promedio or 0), 1))
+    setattr(libro, "resenas_total", int(total or 0))
     return libro
 
 def get_libros(
