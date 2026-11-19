@@ -13,7 +13,7 @@
     </section>
 
     <div class="section-heading">
-      <div><h2>{{ isMember ? 'Mi actividad' : 'Vista general' }}</h2><p>Indicadores actualizados desde los reportes de la API.</p></div>
+      <div><h2>{{ isMember ? 'Mi actividad' : 'Vista general' }}</h2><p>{{ isMember ? 'Tus préstamos y tu membresía.' : 'Indicadores actualizados desde la biblioteca.' }}</p></div>
       <button class="button button-secondary module-action" type="button" :disabled="loading" @click="load">
         <LoaderCircle v-if="loading" class="loading-icon" :size="15" />
         <RefreshCw v-else :size="15" /> Actualizar
@@ -35,15 +35,69 @@
     </section>
 
     <section class="lower-grid">
-      <article class="content-card activity-card">
+      <article v-if="authStore.isStaff" class="content-card activity-card">
         <div class="card-heading">
-          <div><span class="card-overline">MOVIMIENTO</span><h2>Actividad reciente</h2></div>
+          <div><span class="card-overline">CIRCULACIÓN</span><h2>Últimos préstamos registrados</h2></div>
           <span class="card-heading-icon"><Clock3 :size="17" /></span>
         </div>
-        <div class="empty-state">
+        <div class="dashboard-shortcuts">
+          <RouterLink class="button button-primary" :to="{ name: 'loans', query: { nuevo: '1' } }">
+            <Plus :size="16" /> Nuevo préstamo
+          </RouterLink>
+          <RouterLink class="button button-secondary" :to="{ name: 'requests' }">
+            <ClipboardList :size="16" /> Revisar solicitudes
+          </RouterLink>
+        </div>
+        <div v-if="activityLoading" class="table-loading" role="status">
+          <LoaderCircle class="loading-icon" :size="18" />Cargando préstamos…
+        </div>
+        <div v-else-if="activityError" class="empty-state" role="alert">
+          <strong>No se pudieron cargar los préstamos recientes</strong>
+          <p>{{ activityError }}</p>
+        </div>
+        <div v-else-if="latestLoans.length" class="dashboard-loan-list">
+          <div v-for="loan in latestLoans" :key="loan.id" class="dashboard-loan-row">
+            <span class="dashboard-loan-icon"><BookOpenCheck :size="17" /></span>
+            <span class="dashboard-loan-copy">
+              <strong>{{ loan.libro?.titulo || `Préstamo ${loan.id}` }}</strong>
+              <small>{{ loan.socio?.nombre || 'Socio' }} · {{ formatDate(loan.fecha_prestamo) }}</small>
+            </span>
+            <span class="dashboard-loan-id">#{{ loan.id }}</span>
+          </div>
+        </div>
+        <div v-else class="empty-state">
           <span class="empty-illustration"><BookOpenCheck :size="24" /></span>
-          <strong>Sin actividad reciente disponible</strong>
-          <p>La API no publica un endpoint de actividad histórica.</p>
+          <strong>Aún no hay préstamos registrados</strong>
+          <p>Los nuevos préstamos aparecerán aquí.</p>
+        </div>
+      </article>
+
+      <article v-else class="content-card activity-card">
+        <div class="card-heading">
+          <div><span class="card-overline">CIRCULACIÓN</span><h2>Mis préstamos en curso</h2></div>
+          <span class="card-heading-icon"><ArrowLeftRight :size="17" /></span>
+        </div>
+        <div v-if="activityLoading" class="table-loading" role="status">
+          <LoaderCircle class="loading-icon" :size="18" />Cargando tus préstamos…
+        </div>
+        <div v-else-if="activityError" class="empty-state" role="alert">
+          <strong>No se pudieron cargar tus préstamos</strong>
+          <p>{{ activityError }}</p>
+        </div>
+        <div v-else-if="memberLoans.length" class="dashboard-loan-list">
+          <div v-for="loan in memberLoans" :key="loan.id" class="dashboard-loan-row">
+            <span class="dashboard-loan-icon"><BookOpenCheck :size="17" /></span>
+            <span class="dashboard-loan-copy">
+              <strong>{{ loan.libro?.titulo || `Préstamo ${loan.id}` }}</strong>
+              <small>Fecha límite: {{ formatDate(loan.fecha_limite) }}</small>
+            </span>
+            <span class="dashboard-loan-id">#{{ loan.id }}</span>
+          </div>
+        </div>
+        <div v-else class="empty-state">
+          <span class="empty-illustration"><BookOpenCheck :size="24" /></span>
+          <strong>No tienes préstamos en curso</strong>
+          <p>Cuando tengas un préstamo activo, aparecerá aquí.</p>
         </div>
       </article>
 
@@ -81,24 +135,28 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { RouterLink } from 'vue-router'
 import {
   ArrowLeftRight,
   BookOpen,
   BookOpenCheck,
   CalendarDays,
+  ClipboardList,
   Clock3,
   LibraryBig,
   LoaderCircle,
+  Plus,
   RefreshCw,
   UsersRound,
 } from '@lucide/vue'
 import AppShell from '../components/layout/AppShell.vue'
 import { getApiErrorMessage } from '../services/api'
 import { librosService } from '../services/libros.service'
+import { prestamosService } from '../services/prestamos.service'
 import { reportesService } from '../services/reportes.service'
 import { sociosService } from '../services/socios.service'
 import { authStore } from '../stores/auth'
-import { formatCurrency } from '../utils/format'
+import { formatCurrency, formatDate } from '../utils/format'
 
 const today = new Intl.DateTimeFormat('es-CO', {
   weekday: 'long',
@@ -108,13 +166,17 @@ const today = new Intl.DateTimeFormat('es-CO', {
 const isMember = computed(() => authStore.user?.rol === 'socio')
 const loading = ref(false)
 const booksLoading = ref(false)
+const activityLoading = ref(false)
 const loadError = ref('')
+const activityError = ref('')
 const booksError = ref('')
 const summary = ref(null)
 const memberProfile = ref(null)
 const memberActiveLoans = ref(null)
 const memberOverdueLoans = ref(null)
 const memberFines = ref(null)
+const memberLoans = ref([])
+const latestLoans = ref([])
 const recentBooks = ref([])
 const stats = computed(() => {
   if (isMember.value) {
@@ -170,7 +232,9 @@ onMounted(load)
 async function load() {
   loading.value = true
   booksLoading.value = true
+  activityLoading.value = true
   loadError.value = ''
+  activityError.value = ''
   booksError.value = ''
 
   const booksRequest = librosService.list({ skip: 0, limit: 4, orden: '-anio' })
@@ -192,13 +256,31 @@ async function load() {
       })
     : reportesService.summary().then((data) => { summary.value = data })
 
+  const activityRequest = isMember.value
+    ? sociosService.loansForMe({ estado: 'activo', skip: 0, limit: 5 })
+      .then((page) => { memberLoans.value = page.items })
+    : prestamosService.list({ skip: 0, limit: 5 })
+      .then(async (firstPage) => {
+        const page = firstPage.total > firstPage.items.length
+          ? await prestamosService.list({
+              skip: firstPage.total - firstPage.items.length,
+              limit: 5,
+            })
+          : firstPage
+        latestLoans.value = [...page.items].sort((a, b) => b.id - a.id)
+      })
+
   try {
-    const results = await Promise.allSettled([summaryRequest, booksRequest])
+    const results = await Promise.allSettled([summaryRequest, booksRequest, activityRequest])
     if (results[0].status === 'rejected') {
       loadError.value = getApiErrorMessage(results[0].reason, 'No se pudo cargar el resumen.')
     }
+    if (results[2].status === 'rejected') {
+      activityError.value = getApiErrorMessage(results[2].reason, 'No se pudieron cargar los préstamos.')
+    }
   } finally {
     loading.value = false
+    activityLoading.value = false
   }
 }
 </script>

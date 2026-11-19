@@ -5,16 +5,17 @@ import jwt
 from fastapi import APIRouter, Depends, Response, status
 from fastapi import Request
 from fastapi.security import OAuth2PasswordRequestForm
-from sqlalchemy import select, update
+from sqlalchemy import func, select, update
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
 from app.core.config import get_settings
-from app.core.database import get_db
+from app.core.database import bloquear_email_registro, get_db
 from app.core.dependencies import get_current_user
 from app.core.exceptions import (
     Conflicto,
     CuentaBloqueada,
+    ErrorAplicacion,
     NoAutenticado,
     Prohibido,
 )
@@ -22,9 +23,11 @@ from app.core.limiter import limiter
 from app.core.security import crear_token, hash_password, verify_password
 from app.models.refresh_token import RefreshToken
 from app.models.socio import Socio
+from app.models.solicitud_registro import SolicitudRegistro
 from app.models.usuario import Usuario
 from app.schemas.auth import CambioPassword, RefreshSolicitud, TokenRespuesta
-from app.schemas.usuario import UsuarioRegistro, UsuarioRespuesta
+from app.schemas.solicitud import SolicitudCreate, SolicitudOut
+from app.schemas.usuario import UsuarioRespuesta
 
 
 router = APIRouter(prefix="/auth", tags=["Autenticación"])
@@ -82,50 +85,64 @@ def _crear_par_de_tokens(db: Session, usuario: Usuario) -> TokenRespuesta:
     )
 
 
+@router.post("/registro", status_code=status.HTTP_410_GONE, include_in_schema=False)
+def registro_inmediato_desactivado() -> None:
+    raise ErrorAplicacion(
+        status.HTTP_410_GONE,
+        "El registro inmediato fue desactivado; envía una solicitud de cuenta.",
+    )
+
+
 @router.post(
-    "/registro",
-    response_model=UsuarioRespuesta,
+    "/solicitudes",
+    response_model=SolicitudOut,
     status_code=status.HTTP_201_CREATED,
 )
 @limiter.limit("5/minute")
-def registrar_usuario(
+def crear_solicitud_registro(
     request: Request,
-    datos: UsuarioRegistro,
+    datos: SolicitudCreate,
     db: DbSession,
-) -> UsuarioRespuesta:
+) -> SolicitudOut:
     _ = request
     email = str(datos.email).strip().lower()
-    existente = db.scalar(
-        select(Usuario.id).where(Usuario.email == email)
+    bloquear_email_registro(db, email)
+    usuario_existente = db.scalar(
+        select(Usuario.id).where(func.lower(Usuario.email) == email)
     )
-    socio_existente = db.scalar(select(Socio.id).where(Socio.email == email))
-    if existente is not None or socio_existente is not None:
-        raise Conflicto("El correo electrónico ya está registrado")
+    socio_existente = db.scalar(
+        select(Socio.id).where(func.lower(Socio.email) == email)
+    )
+    solicitud_pendiente = db.scalar(
+        select(SolicitudRegistro.id).where(
+            SolicitudRegistro.email == email,
+            SolicitudRegistro.estado == "pendiente",
+        )
+    )
+    if (
+        usuario_existente is not None
+        or socio_existente is not None
+        or solicitud_pendiente is not None
+    ):
+        raise Conflicto("El correo electrónico ya está registrado o tiene una solicitud pendiente")
 
-    socio = Socio(
+    solicitud = SolicitudRegistro(
         nombre=datos.nombre,
         email=email,
         telefono=datos.telefono,
-        activo=True,
+        hashed_password=hash_password(datos.password),
+        estado="pendiente",
     )
     try:
-        db.add(socio)
-        db.flush()
-        usuario = Usuario(
-            email=email,
-            nombre=datos.nombre,
-            hashed_password=hash_password(datos.password),
-            rol="socio",
-            is_active=True,
-            socio_id=socio.id,
-        )
-        db.add(usuario)
+        db.add(solicitud)
         db.commit()
-        db.refresh(usuario)
+        db.refresh(solicitud)
     except IntegrityError as exc:
         db.rollback()
-        raise Conflicto("El correo electrónico ya está registrado") from exc
-    return UsuarioRespuesta.model_validate(usuario)
+        raise Conflicto(
+            "El correo electrónico ya está registrado o tiene una solicitud pendiente"
+        ) from exc
+    return SolicitudOut.model_validate(solicitud)
 
 
 @router.post("/login", response_model=TokenRespuesta)

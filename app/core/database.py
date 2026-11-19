@@ -1,6 +1,6 @@
 from collections.abc import Generator
 
-from sqlalchemy import MetaData, create_engine
+from sqlalchemy import MetaData, create_engine, text
 from sqlalchemy.orm import DeclarativeBase, Session, sessionmaker
 from app.core.config import get_settings
 
@@ -35,3 +35,14 @@ def get_db() -> Generator[Session, None, None]:
         yield db
     finally:
         db.close()
+
+
+def bloquear_email_registro(db: Session, email: str) -> None:
+    if db.get_bind().dialect.name == "postgresql":
+        db.execute(
+            text(
+                "SELECT pg_advisory_xact_lock("
+                "hashtextextended(:email, 0))"
+            ),
+            {"email": email.strip().lower()},
+        )

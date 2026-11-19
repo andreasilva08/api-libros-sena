@@ -17,10 +17,18 @@
           @click="menuOpen = false"
         >
           <component :is="item.icon" :size="18" />
-          <span>{{ item.label }}</span>
+          <span class="nav-item-label">{{ item.label }}</span>
+          <span
+            v-if="item.route === 'requests' && pendingRequestCount > 0"
+            class="requests-count"
+            :aria-label="`${pendingRequestCount} solicitudes pendientes`"
+          >{{ pendingRequestCount }}</span>
           <span v-if="route.name === item.route" class="nav-active-mark"></span>
         </RouterLink>
       </nav>
+      <p v-if="pendingRequestsError" class="sidebar-nav-error" role="status">
+        {{ pendingRequestsError }}
+      </p>
 
       <div class="sidebar-bottom">
         <div class="sidebar-book-note">
@@ -47,11 +55,11 @@
         ><Menu v-if="!menuOpen" :size="20" /><X v-else :size="20" /></button>
         <div class="breadcrumb"><span>Biblioteca</span><ChevronRight :size="14" /><strong>{{ pageTitle }}</strong></div>
         <div class="topbar-right">
-          <span class="preview-pill"><span></span> Sesión activa</span>
+          <span class="role-badge" :class="`role-badge-${authStore.user?.rol}`">{{ roleLabel }}</span>
           <div class="topbar-divider"></div>
           <div class="profile-placeholder">
             <span class="avatar"><UserRound :size="17" /></span>
-            <span class="profile-copy"><strong>{{ authStore.user?.nombre || authStore.user?.email }}</strong><small>{{ roleLabel }}</small></span>
+            <span class="profile-copy"><strong>{{ authStore.user?.nombre || authStore.user?.email }}</strong><small>Cuenta activa</small></span>
           </div>
         </div>
       </header>
@@ -65,15 +73,18 @@
 </template>
 
 <script setup>
-import { computed, ref } from 'vue'
+import { computed, onBeforeUnmount, onMounted, ref } from 'vue'
 import { RouterLink, useRoute, useRouter } from 'vue-router'
 import { authStore } from '../../stores/auth'
+import { getApiErrorMessage } from '../../services/api'
+import { solicitudesService } from '../../services/solicitudes.service'
 import {
   ArrowLeftRight,
   BookOpen,
   BookOpenCheck,
   ChartNoAxesColumn,
   ChevronRight,
+  ClipboardList,
   Feather,
   LayoutDashboard,
   LoaderCircle,
@@ -91,6 +102,8 @@ const route = useRoute()
 const router = useRouter()
 const menuOpen = ref(false)
 const signingOut = ref(false)
+const pendingRequestCount = ref(0)
+const pendingRequestsError = ref('')
 const navItems = [
   { label: 'Resumen', route: 'dashboard', to: '/dashboard', icon: LayoutDashboard },
   { label: 'Libros', route: 'books', to: '/libros', icon: BookOpen },
@@ -99,17 +112,63 @@ const navItems = [
   { label: 'Socios', route: 'members', to: '/socios', icon: UsersRound },
   { label: 'Préstamos', route: 'loans', to: '/prestamos', icon: ArrowLeftRight },
   { label: 'Usuarios', route: 'users', to: '/usuarios', icon: UserRoundCog, roles: ['admin'] },
+  { label: 'Solicitudes', route: 'requests', to: '/solicitudes', icon: ClipboardList, roles: ['admin', 'bibliotecario'] },
   { label: 'Reportes', route: 'reports', to: '/reportes', icon: ChartNoAxesColumn, roles: ['admin', 'bibliotecario'] },
 ]
-const pageTitle = computed(() => route.meta.title || 'Resumen')
-const visibleNavItems = computed(() => navItems.filter(
-  (item) => !item.roles || item.roles.includes(authStore.user?.rol),
+const pageTitle = computed(() => (
+  authStore.user?.rol === 'socio' && route.name === 'members'
+    ? 'Mi perfil'
+    : route.meta.title || 'Resumen'
 ))
+const visibleNavItems = computed(() => {
+  const role = authStore.user?.rol
+  const memberLabels = {
+    dashboard: 'Mi Resumen',
+    books: 'Catálogo',
+    loans: 'Mis Préstamos',
+    members: 'Mi Perfil',
+  }
+  const memberRoutes = Object.keys(memberLabels)
+  return navItems
+    .filter((item) => role === 'socio'
+      ? memberRoutes.includes(item.route)
+      : !item.roles || item.roles.includes(role))
+    .map((item) => ({
+      ...item,
+      label: role === 'socio' ? memberLabels[item.route] : item.label,
+    }))
+})
 const roleLabel = computed(() => ({
-  admin: 'Administración',
+  admin: 'Administrador',
   bibliotecario: 'Bibliotecario',
   socio: 'Socio',
 }[authStore.user?.rol] || 'Sesión'))
+
+onMounted(() => {
+  loadPendingRequests()
+  window.addEventListener('biblioteca:requests-updated', loadPendingRequests)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('biblioteca:requests-updated', loadPendingRequests)
+})
+
+async function loadPendingRequests() {
+  if (!authStore.isStaff) return
+  pendingRequestsError.value = ''
+  try {
+    const page = await solicitudesService.list({
+      estado: 'pendiente',
+      skip: 0,
+      limit: 1,
+    })
+    pendingRequestCount.value = page.total
+  } catch (error) {
+    pendingRequestsError.value = getApiErrorMessage(
+      error,
+      'No se pudo consultar el número de solicitudes pendientes.',
+    )
+  }
+}
 
 async function signOut() {
   if (signingOut.value) return

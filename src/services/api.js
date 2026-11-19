@@ -69,10 +69,8 @@ api.interceptors.response.use(
           return data.access_token
         })
         .catch((refreshError) => {
-          if ([401, 403].includes(refreshError.response?.status)) {
-            clearSessionTokens()
-            notifySessionExpired(refreshError.response.status)
-          }
+          clearSessionTokens()
+          notifySessionExpired(refreshError.response?.status)
           throw refreshError
         })
         .finally(() => {

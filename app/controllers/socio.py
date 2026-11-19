@@ -5,8 +5,10 @@ from app.controllers.libro import enriq_libro
 from app.models.libro import Libro
 from app.models.socio import Socio
 from app.models.prestamo import Prestamo
+from app.models.solicitud_registro import SolicitudRegistro
 from app.schemas.socio import SocioCreate, SocioUpdate
 from app.core.exceptions import NoEncontrado, Conflicto
+from app.core.database import bloquear_email_registro
 
 def get_socios(db: Session, skip: int, limit: int, activo: Optional[bool] = None):
     query = db.query(Socio)
@@ -22,9 +24,20 @@ def get_socio_by_id(db: Session, socio_id: int):
     return socio
 
 def create_socio(db: Session, socio_in: SocioCreate):
+    bloquear_email_registro(db, socio_in.email)
     existente = db.query(Socio).filter(Socio.email == socio_in.email).first()
     if existente:
         raise Conflicto("El correo electrónico ya está registrado")
+    solicitud_pendiente = (
+        db.query(SolicitudRegistro.id)
+        .filter(
+            func.lower(SolicitudRegistro.email) == socio_in.email.lower(),
+            SolicitudRegistro.estado == "pendiente",
+        )
+        .first()
+    )
+    if solicitud_pendiente:
+        raise Conflicto("El correo electrónico tiene una solicitud pendiente")
 
     nuevo_socio = Socio(**socio_in.dict())
     db.add(nuevo_socio)
@@ -37,9 +50,20 @@ def update_socio(db: Session, socio_id: int, socio_in: SocioUpdate):
     datos = socio_in.dict(exclude_unset=True)
 
     if "email" in datos:
+        bloquear_email_registro(db, datos["email"])
         email_ex = db.query(Socio).filter(Socio.email == datos["email"], Socio.id != socio_id).first()
         if email_ex:
             raise Conflicto("El correo electrónico ya pertenece a otro socio")
+        solicitud_pendiente = (
+            db.query(SolicitudRegistro.id)
+            .filter(
+                func.lower(SolicitudRegistro.email) == datos["email"].lower(),
+                SolicitudRegistro.estado == "pendiente",
+            )
+            .first()
+        )
+        if solicitud_pendiente:
+            raise Conflicto("El correo electrónico tiene una solicitud pendiente")
 
     for key, value in datos.items():
         setattr(socio, key, value)

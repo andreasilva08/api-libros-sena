@@ -70,6 +70,7 @@
 
 <script setup>
 import { computed, onMounted, ref } from 'vue'
+import { useRoute, useRouter } from 'vue-router'
 import { ArrowLeftRight, BookOpenCheck, CalendarDays, CornerDownLeft, Plus, SlidersHorizontal } from '@lucide/vue'
 import AppShell from '../components/layout/AppShell.vue'
 import ModuleHeading from '../components/common/ModuleHeading.vue'
@@ -83,6 +84,8 @@ import { sociosService } from '../services/socios.service'
 import { authStore } from '../stores/auth'
 import { formatCurrency, formatDate } from '../utils/format'
 
+const route = useRoute()
+const router = useRouter()
 const limit = 10
 const skip = ref(0)
 const page = ref({ items: [], total: 0 })
@@ -168,6 +171,12 @@ const formModes = computed(() => authStore.isStaff
 onMounted(async () => {
   await load()
   if (authStore.isStaff) await loadOptions()
+  if (route.query.nuevo === '1' && authStore.isStaff) {
+    openCreate()
+    const query = { ...route.query }
+    delete query.nuevo
+    await router.replace({ name: 'loans', query })
+  }
 })
 
 async function load() {

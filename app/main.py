@@ -22,6 +22,7 @@ from app.routes.socios import router as socios_router
 from app.routes.prestamos import router as prestamos_router
 from app.routes.reportes import router as reportes_router
 from app.routes import auth
+from app.routes.solicitudes import router as solicitudes_router
 from app.routes.usuarios import router as usuarios_router
 
 # ⚠️ NOTA: Ya no va 'Base.metadata.create_all' aquí. 
@@ -99,6 +100,7 @@ app.include_router(socios_router, prefix="/api/v1")
 app.include_router(prestamos_router, prefix="/api/v1")
 app.include_router(reportes_router, prefix="/api/v1")
 app.include_router(auth.router, prefix="/api/v1")
+app.include_router(solicitudes_router, prefix="/api/v1")
 app.include_router(usuarios_router, prefix="/api/v1")
 
 # Manejar errores personalizados

@@ -63,10 +63,10 @@ a { color: inherit; text-decoration: none; }
 .login-card h2 { margin: 0; font-family: var(--font-display); font-size: 30px; font-weight: 600; letter-spacing: -1.05px; line-height: 1.3; }
 .login-intro { margin: 11px 0 28px; color: rgb(23 37 84 / 62%); font-size: 13px; }
 .login-form { display: flex; flex-direction: column; }
-.login-form label { margin-bottom: 8px; font-size: 11px; font-weight: 600; }
+.login-form label { margin-bottom: 8px; font-size: 13px; font-weight: 600; }
 .input-wrap { display: flex; height: 48px; align-items: center; gap: 11px; padding: 0 13px; border: 1px solid rgb(23 37 84 / 14%); border-radius: 9px; color: #6d28d9; transition: border-color .18s ease, box-shadow .18s ease; }
 .input-wrap:focus-within { border-color: var(--violet); box-shadow: 0 0 0 3px rgb(139 92 246 / 12%); }
-.input-wrap input { width: 100%; min-width: 0; border: 0; outline: 0; color: var(--navy); background: transparent; font-size: 12px; }
+.input-wrap input { width: 100%; min-width: 0; border: 0; outline: 0; color: var(--navy); background: transparent; font-size: 14px; }
 .input-wrap input::placeholder { color: rgb(23 37 84 / 43%); }
 .password-label { display: flex; justify-content: space-between; margin-top: 19px; }
 .password-label label { margin-bottom: 8px; }
@@ -78,7 +78,17 @@ a { color: inherit; text-decoration: none; }
 .login-submit { width: 100%; margin-top: 23px; }
 .login-submit svg { transition: transform .18s ease; }
 .login-submit:hover svg { transform: translateX(3px); }
-.form-notice { margin: 13px 0 -7px; padding: 10px 12px; border-radius: 8px; color: var(--navy); background: var(--lavender); font-size: 11px; line-height: 1.55; }
+.login-register-prompt { margin: 18px 0 0; color: rgb(23 37 84 / 65%); font-size: 12px; text-align: center; }
+.login-register-prompt a { color: #5b21b6; font-weight: 700; }
+.login-register-prompt a:hover { color: var(--navy); text-decoration: underline; }
+.register-card { max-width: 440px; }
+.register-card .login-intro { margin-bottom: 20px; }
+.register-card .register-field-label { margin-top: 15px; }
+.register-field-label span, .request-reason span { color: rgb(23 37 84 / 55%); font-weight: 400; }
+.register-hint { margin: 7px 0 0; color: rgb(23 37 84 / 66%); font-size: 12px; line-height: 1.55; }
+.request-privacy-note { margin: 17px 0 0; padding: 12px; border: 1px solid rgb(139 92 246 / 17%); border-radius: 8px; color: rgb(23 37 84 / 75%); background: rgb(237 233 254 / 48%); font-size: 12px; line-height: 1.65; }
+.register-submit { width: 100%; margin-top: 20px; font-size: 13px; }
+.form-notice { margin: 13px 0 -7px; padding: 10px 12px; border-radius: 8px; color: var(--navy); background: var(--lavender); font-size: 12px; line-height: 1.55; }
 .preview-callout { display: flex; align-items: flex-start; gap: 9px; margin-top: 21px; padding: 12px 13px; border: 1px solid rgb(139 92 246 / 16%); border-radius: 9px; color: #5b21b6; background: rgb(237 233 254 / 52%); }
 .preview-callout svg { flex: 0 0 auto; margin-top: 1px; }
 .preview-callout p { margin: 0; font-size: 10px; line-height: 1.6; }
@@ -248,3 +258,75 @@ a { color: inherit; text-decoration: none; }
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { scroll-behavior: auto !important; transition-duration: .01ms !important; }
 }
+
+html { font-size: 16px; }
+body { font-size: 16px; }
+.eyebrow { font-size: 13px; letter-spacing: 1.2px; }
+.story-content > p, .login-intro { font-size: 16px; }
+.story-note, .story-footer, .secure-label, .overline, .login-form label,
+.login-register-prompt, .form-notice, .preview-callout p, .preview-link,
+.login-footer, .mobile-brand { font-size: 14px; }
+.input-wrap input { font-size: 16px; }
+.button, .register-submit { font-size: 15px; }
+.register-hint, .request-privacy-note { font-size: 14px; }
+.sidebar-label, .note-caption { font-size: 13px; }
+.nav-item {
+  height: auto;
+  min-height: 48px;
+  padding-top: 9px;
+  padding-bottom: 9px;
+  font-size: 15px;
+  line-height: 1.4;
+}
+.sidebar-signout { font-size: 15px; }
+.sidebar-book-note p { font-size: 14px; }
+.breadcrumb { font-size: 14px; }
+.preview-pill { font-size: 13px; }
+.profile-copy strong { font-size: 15px; }
+.profile-copy small { font-size: 13px; }
+.preview-banner strong, .preview-banner p, .banner-link { font-size: 14px; }
+.welcome-copy { font-size: 15px; }
+.date-card small, .date-card strong, .section-heading p, .data-source { font-size: 13px; }
+.stat-kicker, .stat-foot, .card-overline, .dashboard-footer { font-size: 13px; }
+.stat-card h3 { font-size: 15px; white-space: normal; }
+.stat-card > p { font-size: 14px; line-height: 1.45; white-space: normal; }
+.empty-state strong, .collection-placeholder strong { font-size: 14px; }
+.empty-state p, .collection-placeholder p { font-size: 13px; }
+.role-badge {
+  display: inline-flex;
+  min-height: 34px;
+  align-items: center;
+  padding: 0 12px;
+  border: 1px solid rgb(139 92 246 / 18%);
+  border-radius: 99px;
+  color: #5b21b6;
+  background: var(--lavender);
+  font-size: 13px;
+  font-weight: 700;
+  white-space: nowrap;
+}
+.role-badge-admin { color: #fff; background: var(--navy); }
+.role-badge-bibliotecario { color: #5b21b6; background: rgb(237 233 254 / 78%); }
+.role-badge-socio { color: #5b21b6; background: #fff; }
+.requests-count {
+  display: inline-grid;
+  min-width: 22px;
+  height: 22px;
+  place-items: center;
+  margin-left: auto;
+  padding: 0 6px;
+  border-radius: 99px;
+  color: #fff;
+  background: #6d28d9;
+  font-size: 12px;
+  font-weight: 700;
+  line-height: 1;
+}
+.sidebar-nav-error {
+  margin: 8px 10px 0;
+  color: #5b21b6;
+  font-size: 13px;
+  line-height: 1.5;
+}
+.nav-item-label { min-width: 0; }
+.nav-item .requests-count { flex: 0 0 auto; }

@@ -12,46 +12,58 @@ const router = createRouter({
       meta: { guestOnly: true },
     },
     {
+      path: '/registro',
+      name: 'register-request',
+      component: () => import('../views/RegisterRequestView.vue'),
+      meta: { guestOnly: true },
+    },
+    {
       path: '/dashboard',
       name: 'dashboard',
       component: () => import('../views/DashboardPreview.vue'),
-      meta: { title: 'Resumen', requiresAuth: true },
+      meta: { title: 'Resumen', requiresAuth: true, roles: ['admin', 'bibliotecario', 'socio'] },
     },
     {
       path: '/libros',
       name: 'books',
       component: () => import('../views/BooksView.vue'),
-      meta: { title: 'Libros', requiresAuth: true },
+      meta: { title: 'Libros', requiresAuth: true, roles: ['admin', 'bibliotecario', 'socio'] },
     },
     {
       path: '/autores',
       name: 'authors',
       component: () => import('../views/AuthorsView.vue'),
-      meta: { title: 'Autores', requiresAuth: true },
+      meta: { title: 'Autores', requiresAuth: true, roles: ['admin', 'bibliotecario'] },
     },
     {
       path: '/categorias',
       name: 'categories',
       component: () => import('../views/CategoriesView.vue'),
-      meta: { title: 'Categorías', requiresAuth: true },
+      meta: { title: 'Categorías', requiresAuth: true, roles: ['admin', 'bibliotecario'] },
     },
     {
       path: '/socios',
       name: 'members',
       component: () => import('../views/MembersView.vue'),
-      meta: { title: 'Socios', requiresAuth: true },
+      meta: { title: 'Socios', requiresAuth: true, roles: ['admin', 'bibliotecario', 'socio'] },
     },
     {
       path: '/prestamos',
       name: 'loans',
       component: () => import('../views/LoansView.vue'),
-      meta: { title: 'Préstamos', requiresAuth: true },
+      meta: { title: 'Préstamos', requiresAuth: true, roles: ['admin', 'bibliotecario', 'socio'] },
     },
     {
       path: '/usuarios',
       name: 'users',
       component: () => import('../views/UsersView.vue'),
       meta: { title: 'Usuarios', requiresAuth: true, roles: ['admin'] },
+    },
+    {
+      path: '/solicitudes',
+      name: 'requests',
+      component: () => import('../views/RequestsView.vue'),
+      meta: { title: 'Solicitudes', requiresAuth: true, roles: ['admin', 'bibliotecario'] },
     },
     {
       path: '/reportes',
@@ -70,6 +82,8 @@ const router = createRouter({
 })
 
 router.beforeEach(async (to) => {
+  await authStore.restoreSession()
+
   if (to.meta.guestOnly && authStore.isAuthenticated) {
     return { name: 'dashboard' }
   }

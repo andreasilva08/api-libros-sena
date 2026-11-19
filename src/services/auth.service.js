@@ -10,8 +10,24 @@ export const authService = {
     return data
   },
 
+  async requestAccount(payload) {
+    const { data } = await api.post('/auth/solicitudes', payload, {
+      skipAuthRefresh: true,
+    })
+    return data
+  },
+
   async me() {
     const { data } = await api.get('/auth/me')
+    return data
+  },
+
+  async refresh(refreshToken) {
+    const { data } = await api.post(
+      '/auth/refresh',
+      { refresh_token: refreshToken },
+      { skipAuthRefresh: true },
+    )
     return data
   },
 

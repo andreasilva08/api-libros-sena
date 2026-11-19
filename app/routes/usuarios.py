@@ -5,11 +5,12 @@ from sqlalchemy import func, select
 from sqlalchemy.exc import IntegrityError
 from sqlalchemy.orm import Session
 
-from app.core.database import get_db
+from app.core.database import bloquear_email_registro, get_db
 from app.core.dependencies import Admin
 from app.core.exceptions import Conflicto, NoEncontrado, ReglaNegocio
 from app.core.security import hash_password
 from app.models.socio import Socio
+from app.models.solicitud_registro import SolicitudRegistro
 from app.models.usuario import RolUsuario, Usuario
 from app.schemas.paginacion import Pagina
 from app.schemas.usuario import (
@@ -55,8 +56,16 @@ def crear_usuario(
     _: Admin,
     db: Annotated[Session, Depends(get_db)],
 ):
+    bloquear_email_registro(db, str(datos.email))
     if db.scalar(select(Usuario.id).where(Usuario.email == str(datos.email))):
         raise Conflicto("El correo electrónico ya está registrado")
+    if db.scalar(
+        select(SolicitudRegistro.id).where(
+            func.lower(SolicitudRegistro.email) == str(datos.email).lower(),
+            SolicitudRegistro.estado == "pendiente",
+        )
+    ):
+        raise Conflicto("El correo electrónico tiene una solicitud pendiente")
     if datos.rol == RolUsuario.socio and datos.socio_id is None:
         raise ReglaNegocio("Los usuarios con rol socio requieren socio_id")
     if datos.socio_id is not None:

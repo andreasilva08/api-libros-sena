@@ -8,6 +8,8 @@ import {
 } from '../services/session'
 
 const state = reactive({ user: null })
+let sessionRestored = false
+let restorationPromise = null
 
 export const authStore = {
   get user() {
@@ -26,6 +28,7 @@ export const authStore = {
   async login(email, password) {
     const tokens = await authService.login(email, password)
     setSessionTokens(tokens)
+    sessionRestored = true
     try {
       state.user = await authService.me()
       return state.user
@@ -43,6 +46,32 @@ export const authStore = {
     return state.user
   },
 
+  async restoreSession() {
+    if (state.user && getAccessToken()) return state.user
+    if (sessionRestored) return null
+    if (restorationPromise) return restorationPromise
+
+    sessionRestored = true
+    const refreshToken = getRefreshToken()
+    if (!refreshToken) return null
+
+    restorationPromise = (async () => {
+      try {
+        const tokens = await authService.refresh(refreshToken)
+        setSessionTokens(tokens)
+        state.user = await authService.me()
+        return state.user
+      } catch {
+        clearSessionTokens()
+        state.user = null
+        return null
+      } finally {
+        restorationPromise = null
+      }
+    })()
+    return restorationPromise
+  },
+
   async logout() {
     const refreshToken = getRefreshToken()
     try {
@@ -56,5 +85,6 @@ export const authStore = {
   clearUser() {
     clearSessionTokens()
     state.user = null
+    sessionRestored = true
   },
 }

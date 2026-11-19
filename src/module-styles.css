@@ -146,8 +146,14 @@
 .confirm-dialog > h2 { margin: 15px 0 7px; font-family: var(--font-display); font-size: 18px; font-weight: 600; }
 .confirm-icon { display: grid; width: 39px; height: 39px; place-items: center; border-radius: 11px; color: #6d28d9; background: var(--lavender); }
 .confirm-description { margin: 0; color: rgb(23 37 84 / 67%); font-size: 10px; line-height: 1.65; }
+.request-table-section .module-table th { font-size: 10px; }
+.request-table-section .module-table tbody tr:not(.module-empty-row) td { font-size: 11px; }
+.request-table-section .table-section-heading p { font-size: 11px; }
+.request-review-dialog .confirm-description { font-size: 13px; }
+.request-reason { margin-top: 17px; font-size: 13px; }
+.request-reason textarea { min-height: 90px; padding: 10px; border: 1px solid rgb(23 37 84 / 14%); border-radius: 7px; outline: 0; color: var(--navy); font: inherit; font-size: 13px; font-weight: 400; resize: vertical; }
+.request-reason textarea:focus { border-color: var(--violet); box-shadow: 0 0 0 3px rgb(139 92 246 / 12%); }
 .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0, 0, 0, 0); white-space: nowrap; clip-path: inset(50%); }
-
 @media (max-width: 1120px) {
   .report-summary { grid-template-columns: repeat(2, minmax(0, 1fr)); }
   .module-filters { flex-wrap: wrap; }
@@ -206,3 +212,32 @@
 @media (prefers-reduced-motion: reduce) {
   .table-loading svg { animation: none; }
 }
+body { font-size: 16px; }
+.button, .module-pagination .button, .table-retry, .dialog-actions .button { font-size: 15px; }
+.module-heading > div:first-child > p, .module-search input, .module-filter, .filter-hint, .record-count, .report-source, .table-section-heading p, .catalog-section-heading p, .module-pagination, .table-empty strong, .table-empty p, .table-loading, .loan-note p, .report-list-row, .report-links strong, .report-links small, .dialog-mode-tabs button, .dialog-mode-note, .preview-field, .preview-field small, .dialog-preview-note p, .confirm-description { font-size: 14px; }
+.module-table th { font-size: 13px; }
+.module-table tbody tr:not(.module-empty-row) td { font-size: 15px; }
+.request-table-section .module-table th { font-size: 13px; }
+.request-table-section .module-table tbody tr:not(.module-empty-row) td { font-size: 15px; }
+.module-pagination .button { font-size: 15px; }
+.status-pill { font-size: 13px; }
+.catalog-view-label, .book-availability, .book-availability strong, .book-template-footer, .book-template-meta small, .book-template-meta strong, .book-template-author, .book-cover-template span, .book-template-content .card-overline, .report-stat-card .stat-foot, .report-links small, .report-endpoint, .report-value, .chart-empty strong, .loan-state-tabs button { font-size: 13px; }
+.dashboard-content p { font-size: 15px; }
+.dashboard-content small { font-size: 13px; }
+.dashboard-content button, .dashboard-content input, .dashboard-content select, .dashboard-content textarea { font-size: 15px; }
+.dashboard-book-copy strong { font-size: 14px; }
+.dashboard-book-copy small { font-size: 13px; }
+.preview-field input, .preview-field select, .preview-field textarea, .module-search input, .module-filter, .request-reason textarea { font-size: 15px; }
+.module-search { min-width: 0; }
+.module-filters { min-width: 0; }
+.module-table-wrap { max-width: 100%; }
+.stat-card > p, .book-template-content h3, .book-template-author, .report-list-row strong, .report-links strong { white-space: normal; }
+.dashboard-shortcuts { display: flex; flex-wrap: wrap; gap: 8px; margin: 12px 0; }
+.dashboard-shortcuts .button { min-height: 36px; padding: 0 10px; font-size: 13px; }
+.dashboard-loan-list { display: grid; gap: 7px; margin-top: 10px; }
+.dashboard-loan-row { display: flex; min-width: 0; align-items: center; gap: 9px; padding: 7px; border: 1px solid rgb(23 37 84 / 8%); border-radius: 8px; }
+.dashboard-loan-icon { display: grid; width: 31px; height: 31px; flex: 0 0 auto; place-items: center; border-radius: 9px; color: #6d28d9; background: var(--lavender); }
+.dashboard-loan-copy { display: flex; min-width: 0; flex: 1; flex-direction: column; gap: 3px; }
+.dashboard-loan-copy strong { overflow: hidden; font-size: 14px; font-weight: 600; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard-loan-copy small { overflow: hidden; color: rgb(23 37 84 / 60%); font-size: 13px; text-overflow: ellipsis; white-space: nowrap; }
+.dashboard-loan-id { color: rgb(23 37 84 / 58%); font-size: 13px; }

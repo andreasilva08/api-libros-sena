@@ -88,6 +88,10 @@
             <template v-else>Iniciar sesión <ArrowRight :size="17" /></template>
           </button>
         </form>
+        <p class="login-register-prompt">
+          ¿Aún no tienes cuenta?
+          <RouterLink to="/registro">Crear cuenta</RouterLink>
+        </p>
       </div>
 
       <footer class="login-footer">
